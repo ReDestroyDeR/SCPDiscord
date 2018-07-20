@@ -1,4 +1,4 @@
-﻿using Smod2;
+using Smod2;
 using Smod2.Attributes;
 using Smod2.EventHandlers;
 using Smod2.Events;
@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System;
 
 using System.Threading;
+
 using System.IO;
 
 namespace SCPDiscord
@@ -24,6 +25,7 @@ namespace SCPDiscord
         )]
     class SCPDiscordPlugin : Plugin
     {
+        private SCPDiscordPlugin plugin;
         public TcpClient clientSocket = new TcpClient();
         public readonly string GENERICMESSAGECHANNEL = "000000000000000000";
 
@@ -39,8 +41,6 @@ namespace SCPDiscord
             //Connection settings
             this.AddConfig(new Smod2.Config.ConfigSetting("discord_bot_ip", "127.0.0.1", Smod2.Config.SettingType.STRING, true, "IP of the discord bot."));
             this.AddConfig(new Smod2.Config.ConfigSetting("discord_bot_port", 8888, Smod2.Config.SettingType.NUMERIC, true, "Port of the discord bot."));
-            this.AddConfig(new Smod2.Config.ConfigSetting("discord_bot_retries", 5, Smod2.Config.SettingType.NUMERIC, true, "Number of retries at error"));
-
 
             //Round events
             this.AddConfig(new Smod2.Config.ConfigSetting("discord_channel_onroundstart", "off", Smod2.Config.SettingType.STRING, true, "Discord channel to post event messages in."));
@@ -89,51 +89,77 @@ namespace SCPDiscord
             this.AddConfig(new Smod2.Config.ConfigSetting("discord_channel_onteamrespawn", "off", Smod2.Config.SettingType.STRING, true, "Discord channel to post event messages in."));
             this.AddConfig(new Smod2.Config.ConfigSetting("discord_channel_onsetscpconfig", "off", Smod2.Config.SettingType.STRING, true, "Discord channel to post event messages in."));
 
+            //Multi-language support
+            this.AddConfig(new Smod2.Config.ConfigSetting("discord_bot_language", "eng", Smod2.Config.SettingType.STRING, true, "Discord bot language. Default: English."));
+
+        }
+
+        public SCPDiscordPlugin(SCPDiscordPlugin plugin)
+        {
+            this.plugin = plugin;
+        }
+
+        //Multi-language support.
+        public string MultiLanguage(int line)
+        {
+            string multilanguage_path = "/sm_plugins/SCPDiscord/";
+            bool fodler_exists = Directory.Exists(multilanguage_path);
+            string[] opened_file = new string[150];
+
+            if (!fodler_exists)
+            {
+                this.Info("SCPDiscord can't load. Missing translation fodler in sm_plugins folder.");
+                pluginManager.DisablePlugin(this);
+            }
+
+            if (line > 0)
+            {
+                line = line - 1;
+            }
+
+            switch (plugin.GetConfigString("discord_bot_language"))
+            {
+                case "rus":
+                    opened_file = File.ReadAllLines(@"/sm_plugins/SCPDiscord/Russian.txt");
+                    break;
+                default:
+                    opened_file = File.ReadAllLines(@"/sm_plugins/SCPDiscord/English.txt");
+                    break;
+            }
+
+            string requested_line = opened_file[line];
+            return requested_line;
         }
 
         public override void OnEnable()
         {
-            // Retries on the first connect
-            for (int i = 0; i <= GetConfigInt("discord_bot_retries"); i++)
+            try
             {
-                try
-                {
-                    // Sleep for 500 MS
-                    // It could cause high ping when connection is lost
-                    // But if you won't set too high tries to connect in the config
-                    // It would be fine
+                clientSocket.Connect(this.GetConfigString("discord_bot_ip"), this.GetConfigInt("discord_bot_port"));
+            }
+            catch(SocketException e)
+            {
+                this.Info(this.MultiLanguage(1) + e.ToString());
+                this.pluginManager.DisablePlugin(this);
+            }
+            catch (ObjectDisposedException e)
+            {
+                this.Info(this.MultiLanguage(2) + e.ToString());
+                this.pluginManager.DisablePlugin(this);
+            }
+            catch (ArgumentOutOfRangeException e)
+            {
+                this.Info(this.MultiLanguage(3) + e.ToString());
+                this.pluginManager.DisablePlugin(this);
+            }
+            catch (ArgumentNullException e)
+            {
+                this.Info(this.MultiLanguage(4) + e.ToString());
+                this.pluginManager.DisablePlugin(this);
+            }
 
-                    Thread.Sleep(500);
-                    clientSocket.Connect(this.GetConfigString("discord_bot_ip"), this.GetConfigInt("discord_bot_port"));
-                }
-                catch (SocketException e)
-                {
-                    this.Info("Error occured while connecting to discord bot server.\n" + e.Message);
-                }
-                catch (ObjectDisposedException e)
-                {
-                    this.Info("TCP client was unexpectedly closed.\n" + e.Message);
-                }
-                catch (ArgumentOutOfRangeException e)
-                {
-                    this.Info("Invalid port.\n" + e.Message); 
-                }
-                catch (ArgumentNullException e)
-                {
-                    this.Info("IP address is null.\n" + e.Message);
-                }  
-            }
-            
-            // Failure check
-            if (clientSocket.Connected)
-            {
-                this.Info("SCPDiscord enabled.");
-                SendMessageAsync("default", "Plugin Enabled.");
-            }
-            else
-            {
-                pluginManager.DisablePlugin(this);
-            }
+            this.Info("SCPDiscord enabled.");
+            SendMessageAsync("default", "Plugin Enabled.");
         }
 
         public void SendMessageAsync(string channelID, string message)
