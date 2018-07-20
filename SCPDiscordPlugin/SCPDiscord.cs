@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System;
 
 using System.Threading;
+using System.IO;
 
 namespace SCPDiscord
 {
@@ -97,28 +98,30 @@ namespace SCPDiscord
             {
                 try
                 {
-                    // Timeout 2 sec
-                    // 1000 + 1000 = 2000 = 2 Seconds
-                    clientSocket.SendTimeout = 1000;
-                    clientSocket.ReceiveTimeout = 1000;
+                    // Sleep for 500 MS
+                    // It could cause high ping when connection is lost
+                    // But if you won't set too high tries to connect in the config
+                    // It would be fine
+
+                    Thread.Sleep(500);
                     clientSocket.Connect(this.GetConfigString("discord_bot_ip"), this.GetConfigInt("discord_bot_port"));
                 }
                 catch (SocketException e)
                 {
-                    this.Info("Error occured while connecting to discord bot server.\n" + e.ToString());
+                    this.Info("Error occured while connecting to discord bot server.\n" + e.Message);
                 }
                 catch (ObjectDisposedException e)
                 {
-                    this.Info("TCP client was unexpectedly closed.\n" + e.ToString());
+                    this.Info("TCP client was unexpectedly closed.\n" + e.Message);
                 }
                 catch (ArgumentOutOfRangeException e)
                 {
-                    this.Info("Invalid port.\n" + e.ToString());
+                    this.Info("Invalid port.\n" + e.Message); 
                 }
                 catch (ArgumentNullException e)
                 {
-                    this.Info("IP address is null.\n" + e.ToString());
-                }
+                    this.Info("IP address is null.\n" + e.Message);
+                }  
             }
             
             // Failure check
@@ -131,7 +134,6 @@ namespace SCPDiscord
             {
                 pluginManager.DisablePlugin(this);
             }
-           
         }
 
         public void SendMessageAsync(string channelID, string message)

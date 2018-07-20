@@ -26,14 +26,14 @@ namespace SCPDiscord
                 }
                 catch (SocketException e)
                 {
-                    plugin.Info("Error occured while connecting to discord bot server.\n" + e.ToString());
+                    plugin.Info("Error occured while connecting to discord bot server.\n" + e.Message);
                     plugin.Info("Restarting plugin...");
                     plugin.clientSocket.Close();
                     plugin.OnEnable();
                 }
                 catch (ObjectDisposedException e)
                 {
-                    plugin.Info("TCP client was unexpectedly closed.\n" + e.ToString());
+                    plugin.Info("TCP client was unexpectedly closed.\n" + e.Message);
                     plugin.Info("Restarting plugin...");
                     plugin.clientSocket.Close();
                     plugin.OnEnable();
